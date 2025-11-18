@@ -13,13 +13,16 @@ CONTAINER ID   IMAGE                            STATUS
 
 ## Root Causes and Solutions
 
-### 1. **Volume Permission Issues (Most Common on Windows)**
+### 1. **Cgroup Mount Permission Issues (Most Common on Windows)**
 
-FreeIPA needs proper permissions on its data volume. On Windows with Docker Desktop/WSL2, SELinux context labels (`:Z`) can cause issues.
+**Error:** `Failed to mount cgroup at /sys/fs/cgroup/systemd: Operation not permitted`
+
+FreeIPA uses systemd to manage internal services and needs write access to the cgroup filesystem. On Windows with Docker Desktop/WSL2, mounting `/sys/fs/cgroup` as read-only (`:ro`) causes this error.
 
 **Solution:**
-- Removed `:Z` flags from volume mounts
-- Added `/sys/fs/cgroup` mount for systemd support
+- Changed `/sys/fs/cgroup` mount from `:ro` to `:rw` (read-write)
+- Added `SYS_ADMIN` capability for cgroup management
+- Removed `:Z` SELinux flags from volume mounts (not needed on Windows)
 
 ### 2. **Healthcheck Too Aggressive**
 

@@ -95,23 +95,35 @@ docker logs -f freeipa-server
 Si ve `Restarting (255)` en el estado de freeipa-server:
 
 ```bash
-# Ver el estado
+# Ver el estado y logs
 docker ps | findstr freeipa
+docker logs freeipa-server
 ```
 
-**Causa común**: Inicialización en curso o problemas de permisos en Windows/WSL2.
+**Errores comunes**:
 
-**Soluciones rápidas**:
-
-1. **Sea paciente** - La primera instalación toma 10 minutos
-2. **Limpie volúmenes** si está corrupto:
+1. **"Failed to mount cgroup at /sys/fs/cgroup/systemd: Operation not permitted"**
+   - **Solución**: La configuración ya está corregida con `:rw` y `SYS_ADMIN` capability
+   - Limpie los volúmenes y reinicie:
    ```bash
    docker-compose down
-   docker volume rm host-1-powerhouse_freeipa_data
-   docker volume rm host-1-powerhouse_freeipa_logs
+   docker volume rm host-1-powerhouse_freeipa_data host-1-powerhouse_freeipa_logs
    docker-compose up -d
    ```
-3. **Revise guía completa**: Ver `FREEIPA_TROUBLESHOOTING.md` para diagnóstico detallado
+
+2. **Inicialización en curso**
+   - **Solución**: Sea paciente - La primera instalación toma 10 minutos
+   - Monitoree con: `docker logs -f freeipa-server`
+
+3. **Volúmenes corruptos**
+   - **Solución**: Limpie y reinicie:
+   ```bash
+   docker-compose down
+   docker volume rm host-1-powerhouse_freeipa_data host-1-powerhouse_freeipa_logs
+   docker-compose up -d
+   ```
+
+4. **Guía completa**: Ver `FREEIPA_TROUBLESHOOTING.md` para diagnóstico detallado
 
 ## Servicios Disponibles
 

@@ -74,13 +74,14 @@ services:
     volumes:
       - freeipa_data:/data
       - freeipa_logs:/var/log
-      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
       - ../scripts/setup_chispitas.sh:/setup_chispitas.sh:ro
     sysctls:
       - net.ipv6.conf.all.disable_ipv6=0
     security_opt:
       - seccomp:unconfined
     cap_add:
+      - SYS_ADMIN
       - SYS_TIME
       - NET_ADMIN
     tmpfs:
