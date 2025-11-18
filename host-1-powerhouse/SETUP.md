@@ -8,25 +8,20 @@ Antes de continuar, asegúrese de:
 2. Tener permisos de administrador/root
 3. Tener al menos 20GB de espacio en disco libre
 
-## Paso 1: Crear archivo .env
+## Configuración Automática de .env
 
-El archivo `.env` **YA ESTÁ INCLUIDO** en el repositorio con valores predeterminados. 
+El archivo `.env` **YA ESTÁ INCLUIDO** en este directorio con valores predeterminados seguros para desarrollo/pruebas.
 
-**IMPORTANTE**: Para seguridad, debe cambiar las contraseñas antes de usar en producción.
+**IMPORTANTE**: 
+- Para seguridad, cambie las contraseñas antes de usar en producción
+- El archivo .env se carga automáticamente por Docker Compose
+- No necesita crearlo manualmente
 
-```bash
-# Verificar que existe
-cd C:\proy\Proyecto-Redes-Corporativas
-dir .env
-
-# Si no existe, crearlo desde el template
-copy .env.template .env
-```
-
-### Editar contraseñas (RECOMENDADO)
+### Editar contraseñas (RECOMENDADO para producción)
 
 ```bash
-# Editar el archivo
+# Editar el archivo .env en este directorio
+cd C:\proy\Proyecto-Redes-Corporativas\host-1-powerhouse
 notepad .env
 ```
 
@@ -40,13 +35,13 @@ notepad .env
 - `MARIADB_ERP_PASSWORD` - Contraseña para Dolibarr
 - `DOLIBARR_ADMIN_PASSWORD` - Contraseña admin de Dolibarr
 
-## Paso 2: Crear la red Docker
+## Paso 1: Crear la red Docker
 
 ```bash
 docker network create --driver bridge --subnet=172.20.0.0/16 --gateway=172.20.0.1 chispitas_net
 ```
 
-## Paso 3: Configurar SuiteCRM (OPCIONAL)
+## Paso 2: Configurar SuiteCRM (OPCIONAL)
 
 **NOTA IMPORTANTE**: SuiteCRM no tiene imagen Docker oficial. El servicio está comentado en docker-compose.yml.
 
@@ -63,12 +58,14 @@ docker network create --driver bridge --subnet=172.20.0.0/16 --gateway=172.20.0.
 3. **Instalar SuiteCRM manualmente**
    - Ver `SUITECRM_SETUP.md` para crear imagen personalizada
 
-## Paso 4: Iniciar los servicios
+## Paso 3: Iniciar los servicios
 
 ```bash
 cd C:\proy\Proyecto-Redes-Corporativas\host-1-powerhouse
 docker-compose up -d
 ```
+
+**NOTA**: Docker Compose cargará automáticamente el archivo `.env` de este directorio. No debería ver advertencias sobre variables no configuradas.
 
 ### Verificar el despliegue
 
@@ -83,7 +80,7 @@ docker logs -f orangehrm
 docker logs -f dolibarr-erp
 ```
 
-## Paso 5: Esperar inicialización de FreeIPA
+## Paso 4: Esperar inicialización de FreeIPA
 
 FreeIPA tarda **5-10 minutos** en inicializarse por primera vez:
 
@@ -109,19 +106,19 @@ Después del despliegue exitoso:
 
 ### Error: "variable is not set"
 
-**Causa**: El archivo `.env` no existe o está en la ubicación incorrecta.
+**Causa**: El archivo `.env` no existe en el directorio `host-1-powerhouse`.
 
 **Solución**: 
 ```bash
-# Verificar ubicación del .env
-cd C:\proy\Proyecto-Redes-Corporativas
+# Verificar que existe .env en el directorio host-1-powerhouse
+cd C:\proy\Proyecto-Redes-Corporativas\host-1-powerhouse
 dir .env
 
-# Si no existe
-copy .env.template .env
+# Si no existe, copiarlo desde el directorio raíz
+copy ..\. env .env
 ```
 
-El archivo `.env` debe estar en `C:\proy\Proyecto-Redes-Corporativas\.env`, NO en `host-1-powerhouse\.env`.
+Docker Compose busca el archivo `.env` en el **directorio actual** (donde está docker-compose.yml), no en el directorio padre.
 
 ### Error: "network chispitas_net not found"
 
@@ -136,7 +133,43 @@ docker network create --driver bridge --subnet=172.20.0.0/16 --gateway=172.20.0.
 
 **Solución**: El servicio de SuiteCRM ahora está comentado por defecto. Ver `SUITECRM_SETUP.md` para alternativas.
 
-### Error: "Cannot find path ... because it does not exist"
+### Error: "Container postgres-odoo is unhealthy" or "dependency failed to start"
+
+**Causa**: PostgreSQL no pudo iniciar correctamente, generalmente porque:
+1. El archivo `.env` no se cargó (variables de contraseña vacías)
+2. Volúmenes de datos corruptos de intentos anteriores
+
+**Solución 1 - Verificar .env**:
+```bash
+# Asegurarse de que .env existe en host-1-powerhouse
+cd C:\proy\Proyecto-Redes-Corporativas\host-1-powerhouse
+dir .env
+type .env | findstr POSTGRES_ODOO_PASSWORD
+```
+
+**Solución 2 - Limpiar y reiniciar**:
+```bash
+# Detener todos los contenedores
+docker-compose down
+
+# Eliminar volúmenes (CUIDADO: esto borra datos)
+docker volume rm host-1-powerhouse_postgres_odoo_data
+
+# Reiniciar
+docker-compose up -d
+
+# Ver logs de postgres
+docker logs -f postgres-odoo
+```
+
+**Solución 3 - Verificar contraseña no vacía**:
+```bash
+# El problema común es que POSTGRES_PASSWORD está vacío
+# Editar .env y asegurar que tiene un valor:
+notepad .env
+# Buscar: POSTGRES_ODOO_PASSWORD=OdooSecurePass2024!
+# Debe tener un valor, no estar vacío
+```
 
 **Causa**: PowerShell está en el directorio equivocado.
 

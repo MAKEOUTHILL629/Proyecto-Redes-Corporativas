@@ -4,9 +4,11 @@
 
 # Archivos de entorno locales con contraseñas personalizadas
 # NOTA: .env con valores predeterminados SÍ está incluido en el repositorio
+# en el directorio raíz Y en cada directorio host-X-xxx para compatibilidad
 # Crear .env.local para sobrescribir valores localmente si es necesario
 .env.local
 *.env.local
+.env.production
 
 # Logs
 *.log

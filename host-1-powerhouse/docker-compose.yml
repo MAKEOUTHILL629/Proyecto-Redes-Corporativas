@@ -53,8 +53,6 @@ services:
     container_name: freeipa-server
     hostname: ipa.chispitas.local
     domainname: chispitas.local
-    env_file:
-      - ../.env
     networks:
       chispitas_net:
         ipv4_address: 172.20.1.10
@@ -100,8 +98,6 @@ services:
   postgres-odoo:
     image: postgres:${POSTGRES_ODOO_VERSION:-15}
     container_name: postgres-odoo
-    env_file:
-      - ../.env
     networks:
       chispitas_net:
         ipv4_address: 172.20.1.20
@@ -125,8 +121,6 @@ services:
   odoo:
     image: odoo:${ODOO_VERSION:-17.0}
     container_name: odoo-manufacturing
-    env_file:
-      - ../.env
     networks:
       chispitas_net:
         ipv4_address: 172.20.1.21
@@ -159,8 +153,6 @@ services:
   mariadb-crm:
     image: mariadb:${MARIADB_VERSION:-10.11}
     container_name: mariadb-crm
-    env_file:
-      - ../.env
     networks:
       chispitas_net:
         ipv4_address: 172.20.1.30
@@ -195,8 +187,6 @@ services:
   # suitecrm:
   #   image: espocrm/espocrm:latest
   #   container_name: suitecrm
-  #   env_file:
-  #     - ../.env
   #   networks:
   #     chispitas_net:
   #       ipv4_address: 172.20.1.31
@@ -223,8 +213,6 @@ services:
   mariadb-hrm:
     image: mariadb:${MARIADB_VERSION:-10.11}
     container_name: mariadb-hrm
-    env_file:
-      - ../.env
     networks:
       chispitas_net:
         ipv4_address: 172.20.1.40
@@ -249,8 +237,6 @@ services:
   orangehrm:
     image: orangehrm/orangehrm:${ORANGEHRM_VERSION:-latest}
     container_name: orangehrm
-    env_file:
-      - ../.env
     networks:
       chispitas_net:
         ipv4_address: 172.20.1.41
@@ -276,8 +262,6 @@ services:
   mariadb-erp:
     image: mariadb:${MARIADB_VERSION:-10.11}
     container_name: mariadb-erp
-    env_file:
-      - ../.env
     networks:
       chispitas_net:
         ipv4_address: 172.20.1.50
@@ -302,8 +286,6 @@ services:
   dolibarr:
     image: dolibarr/dolibarr:${DOLIBARR_VERSION:-latest}
     container_name: dolibarr-erp
-    env_file:
-      - ../.env
     networks:
       chispitas_net:
         ipv4_address: 172.20.1.51
