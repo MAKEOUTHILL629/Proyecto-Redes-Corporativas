@@ -183,33 +183,39 @@ services:
   # ===========================================================================
   # SuiteCRM - CRM para Área Comercial
   # ===========================================================================
-  # NOTA: Usando imagen de la comunidad ya que bitnami/suitecrm no existe
-  # Para producción, considere construir su propia imagen desde el código fuente oficial
-  suitecrm:
-    image: salesagility/suitecrm:latest
-    container_name: suitecrm
-    env_file:
-      - ../.env
-    networks:
-      chispitas_net:
-        ipv4_address: 172.20.1.31
-    ports:
-      - "${SUITECRM_PORT:-8081}:80"
-    environment:
-      - DATABASE_TYPE=mysql
-      - DATABASE_HOST=mariadb-crm
-      - DATABASE_NAME=${MARIADB_CRM_DATABASE:-suitecrm_db}
-      - DATABASE_USER=${MARIADB_CRM_USER:-suitecrm_user}
-      - DATABASE_PASSWORD=${MARIADB_CRM_PASSWORD}
-      - SITE_URL=http://crm.chispitas.local
-      - DB_ADMIN_USERNAME=${SUITECRM_ADMIN_USER:-admin}
-      - DB_ADMIN_PASSWORD=${SUITECRM_ADMIN_PASSWORD}
-    volumes:
-      - suitecrm_data:/var/www/html
-    depends_on:
-      mariadb-crm:
-        condition: service_healthy
-    restart: unless-stopped
+  # IMPORTANTE: SuiteCRM no tiene una imagen Docker oficial lista para usar.
+  # Opciones disponibles:
+  # 1. Usar un contenedor PHP/Apache y instalar SuiteCRM manualmente
+  # 2. Construir su propia imagen desde https://github.com/salesagility/SuiteCRM
+  # 3. Usar una alternativa como EspoCRM (espocrm/espocrm:latest)
+  #
+  # Por ahora, el servicio está COMENTADO. Descomente y configure según su elección.
+  # Para usar EspoCRM como alternativa, descomente la sección a continuación:
+  
+  # suitecrm:
+  #   image: espocrm/espocrm:latest
+  #   container_name: suitecrm
+  #   env_file:
+  #     - ../.env
+  #   networks:
+  #     chispitas_net:
+  #       ipv4_address: 172.20.1.31
+  #   ports:
+  #     - "${SUITECRM_PORT:-8081}:80"
+  #   environment:
+  #     - ESPOCRM_DATABASE_HOST=mariadb-crm
+  #     - ESPOCRM_DATABASE_NAME=${MARIADB_CRM_DATABASE:-suitecrm_db}
+  #     - ESPOCRM_DATABASE_USER=${MARIADB_CRM_USER:-suitecrm_user}
+  #     - ESPOCRM_DATABASE_PASSWORD=${MARIADB_CRM_PASSWORD}
+  #     - ESPOCRM_ADMIN_USERNAME=${SUITECRM_ADMIN_USER:-admin}
+  #     - ESPOCRM_ADMIN_PASSWORD=${SUITECRM_ADMIN_PASSWORD}
+  #     - ESPOCRM_SITE_URL=http://crm.chispitas.local
+  #   volumes:
+  #     - suitecrm_data:/var/www/html
+  #   depends_on:
+  #     mariadb-crm:
+  #       condition: service_healthy
+  #   restart: unless-stopped
 
   # ===========================================================================
   # MariaDB - Base de Datos para OrangeHRM

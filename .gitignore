@@ -2,10 +2,11 @@
 # .gitignore - Proyecto Chispitas
 # =============================================================================
 
-# Archivos de entorno con contraseñas
-.env
-*.env
-!.env.template
+# Archivos de entorno locales con contraseñas personalizadas
+# NOTA: .env con valores predeterminados SÍ está incluido en el repositorio
+# Crear .env.local para sobrescribir valores localmente si es necesario
+.env.local
+*.env.local
 
 # Logs
 *.log
