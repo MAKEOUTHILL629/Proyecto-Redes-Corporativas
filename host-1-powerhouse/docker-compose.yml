@@ -70,9 +70,11 @@ services:
     environment:
       - IPA_SERVER_HOSTNAME=ipa.chispitas.local
       - IPA_SERVER_INSTALL_OPTS=-U --domain=chispitas.local --realm=CHISPITAS.LOCAL --ds-password=${FREEIPA_DM_PASSWORD} --admin-password=${FREEIPA_ADMIN_PASSWORD} --no-ntp --setup-dns --no-forwarders --no-reverse
+      - PASSWORD=${FREEIPA_ADMIN_PASSWORD}
     volumes:
-      - freeipa_data:/data:Z
-      - freeipa_logs:/var/log:Z
+      - freeipa_data:/data
+      - freeipa_logs:/var/log
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
       - ../scripts/setup_chispitas.sh:/setup_chispitas.sh:ro
     sysctls:
       - net.ipv6.conf.all.disable_ipv6=0
@@ -84,13 +86,15 @@ services:
     tmpfs:
       - /run
       - /tmp
-    restart: unless-stopped
+    tty: true
+    stdin_open: true
+    restart: on-failure:5
     healthcheck:
-      test: ["CMD", "ipactl", "status"]
-      interval: 60s
-      timeout: 30s
-      retries: 5
-      start_period: 300s
+      test: ["CMD-SHELL", "echo OK || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 600s
 
   # ===========================================================================
   # PostgreSQL - Base de Datos para Odoo

@@ -86,9 +86,32 @@ FreeIPA tarda **5-10 minutos** en inicializarse por primera vez:
 
 ```bash
 docker logs -f freeipa-server
-# Esperar mensaje: "FreeIPA server configured."
+# Esperar mensaje: "The ipa-server-install command was successful"
 # Presionar Ctrl+C para salir
 ```
+
+### ⚠️ Si FreeIPA se reinicia constantemente
+
+Si ve `Restarting (255)` en el estado de freeipa-server:
+
+```bash
+# Ver el estado
+docker ps | findstr freeipa
+```
+
+**Causa común**: Inicialización en curso o problemas de permisos en Windows/WSL2.
+
+**Soluciones rápidas**:
+
+1. **Sea paciente** - La primera instalación toma 10 minutos
+2. **Limpie volúmenes** si está corrupto:
+   ```bash
+   docker-compose down
+   docker volume rm host-1-powerhouse_freeipa_data
+   docker volume rm host-1-powerhouse_freeipa_logs
+   docker-compose up -d
+   ```
+3. **Revise guía completa**: Ver `FREEIPA_TROUBLESHOOTING.md` para diagnóstico detallado
 
 ## Servicios Disponibles
 
@@ -219,9 +242,19 @@ docker-compose logs
 3. **Continuar con Host-SVR-02**: Servidor de correo y archivos
 4. **Continuar con Host-SVR-03**: Proxy inverso
 
+## Documentación de Resolución de Problemas
+
+Si encuentra problemas específicos, consulte estas guías:
+
+- **FREEIPA_TROUBLESHOOTING.md** - Problemas de FreeIPA (reinicio continuo, etc.)
+- **SUITECRM_SETUP.md** - Alternativas de CRM y configuración
+- **ENV_FILES_README.md** - Información sobre archivos .env
+- **README.md** - Documentación completa del host
+
 ## Notas Adicionales
 
 - **Primera vez**: Los contenedores tardan más tiempo en iniciar mientras descargan las imágenes
-- **FreeIPA**: Es el servicio más importante y el que más tarda en inicializar
-- **Recursos**: Asegúrese de tener al menos 8GB RAM disponibles
+- **FreeIPA**: Es el servicio más importante y el que más tarda en inicializar (5-10 minutos)
+- **Recursos**: Asegúrese de tener al menos 8GB RAM disponibles para Docker Desktop
 - **Firewall**: Windows puede solicitar permisos para Docker - permitir acceso
+- **Reinicio de FreeIPA**: Si FreeIPA se reinicia continuamente, ver FREEIPA_TROUBLESHOOTING.md
