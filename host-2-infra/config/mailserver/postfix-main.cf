@@ -1,0 +1,50 @@
+# Configuración adicional de Postfix para integración con FreeIPA
+# Este archivo extiende la configuración predeterminada de docker-mailserver
+
+# Configuración de dominio
+myhostname = mail.chispitas.local
+mydomain = chispitas.local
+myorigin = $mydomain
+
+# Redes confiables
+mynetworks = 127.0.0.0/8 172.20.0.0/16 192.168.1.0/24
+
+# Tamaño máximo de mensaje (50MB)
+message_size_limit = 52428800
+mailbox_size_limit = 524288000
+
+# Configuración de entrega local
+local_recipient_maps =
+
+# Banner SMTP
+smtpd_banner = $myhostname ESMTP Chispitas Mail Server
+
+# Configuración de relay
+relay_domains = $mydestination
+relayhost =
+
+# TLS/SSL
+smtpd_tls_security_level = may
+smtp_tls_security_level = may
+smtpd_tls_protocols = !SSLv2, !SSLv3, !TLSv1, !TLSv1.1
+smtp_tls_protocols = !SSLv2, !SSLv3, !TLSv1, !TLSv1.1
+
+# Restricciones de relay
+smtpd_relay_restrictions = 
+    permit_mynetworks
+    permit_sasl_authenticated
+    reject_unauth_destination
+
+# Restricciones de cliente
+smtpd_client_restrictions = 
+    permit_mynetworks
+    permit_sasl_authenticated
+    reject
+
+# Virtual domains
+virtual_mailbox_domains = chispitas.local
+virtual_transport = lmtp:unix:private/dovecot-lmtp
+
+# Queue settings
+maximal_queue_lifetime = 7d
+bounce_queue_lifetime = 4d

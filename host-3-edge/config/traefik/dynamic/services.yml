@@ -1,0 +1,184 @@
+# Configuración Dinámica de Traefik
+# Rutas para los servicios de Chispitas
+# 
+# IMPORTANTE: Ajustar las IPs según su configuración de red
+# - 192.168.1.10: Host-SVR-01 (Aplicaciones)
+# - 192.168.1.20: Host-SVR-02 (Infraestructura)
+
+# =============================================================================
+# HTTP Configuration
+# =============================================================================
+http:
+  # ---------------------------------------------------------------------------
+  # Routers - Definen las rutas de entrada
+  # ---------------------------------------------------------------------------
+  routers:
+    # Odoo Manufacturing
+    odoo-router:
+      rule: "Host(`odoo.chispitas.local`)"
+      service: odoo-service
+      entryPoints:
+        - web
+      # Para HTTPS, descomentar:
+      # - websecure
+      # tls: {}
+    
+    # SuiteCRM
+    crm-router:
+      rule: "Host(`crm.chispitas.local`)"
+      service: crm-service
+      entryPoints:
+        - web
+    
+    # OrangeHRM
+    hrm-router:
+      rule: "Host(`hrm.chispitas.local`)"
+      service: hrm-service
+      entryPoints:
+        - web
+    
+    # Dolibarr ERP
+    erp-router:
+      rule: "Host(`erp.chispitas.local`)"
+      service: erp-service
+      entryPoints:
+        - web
+    
+    # FreeIPA (opcional, para acceso via proxy)
+    ipa-router:
+      rule: "Host(`ipa.chispitas.local`)"
+      service: ipa-service
+      entryPoints:
+        - web
+        - websecure
+      tls: {}
+  
+  # ---------------------------------------------------------------------------
+  # Services - Definen los backends (servicios en otros hosts)
+  # ---------------------------------------------------------------------------
+  services:
+    # Odoo Manufacturing (Host-SVR-01:8069)
+    odoo-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.1.10:8069"
+        healthCheck:
+          path: "/web/health"
+          interval: "30s"
+          timeout: "10s"
+    
+    # SuiteCRM (Host-SVR-01:8081)
+    crm-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.1.10:8081"
+        healthCheck:
+          path: "/"
+          interval: "30s"
+          timeout: "10s"
+    
+    # OrangeHRM (Host-SVR-01:8082)
+    hrm-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.1.10:8082"
+        healthCheck:
+          path: "/"
+          interval: "30s"
+          timeout: "10s"
+    
+    # Dolibarr ERP (Host-SVR-01:8083)
+    erp-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.1.10:8083"
+        healthCheck:
+          path: "/"
+          interval: "30s"
+          timeout: "10s"
+    
+    # FreeIPA (Host-SVR-01:443)
+    ipa-service:
+      loadBalancer:
+        servers:
+          - url: "https://192.168.1.10"
+        serversTransport: insecure-transport
+  
+  # ---------------------------------------------------------------------------
+  # Middlewares - Transformaciones y seguridad
+  # ---------------------------------------------------------------------------
+  middlewares:
+    # Redirección a HTTPS
+    redirect-to-https:
+      redirectScheme:
+        scheme: https
+        permanent: true
+    
+    # Headers de seguridad
+    security-headers:
+      headers:
+        browserXssFilter: true
+        contentTypeNosniff: true
+        frameDeny: true
+        sslRedirect: false  # Cambiar a true en producción
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        stsPreload: true
+        customFrameOptionsValue: "SAMEORIGIN"
+    
+    # Rate limiting (opcional)
+    rate-limit:
+      rateLimit:
+        average: 100
+        period: 1s
+        burst: 50
+    
+    # Autenticación básica (opcional para dashboard)
+    basic-auth:
+      basicAuth:
+        users:
+          # admin:admin (cambiar en producción)
+          # Generar con: htpasswd -nb admin password
+          - "admin:$apr1$H6uskkkW$IgXLP6ewTrSuBkTrqE8wj/"
+    
+    # Compression
+    compress:
+      compress: {}
+  
+  # ---------------------------------------------------------------------------
+  # Servers Transports - Para servicios con TLS self-signed
+  # ---------------------------------------------------------------------------
+  serversTransports:
+    insecure-transport:
+      insecureSkipVerify: true
+
+# =============================================================================
+# TCP Configuration (para servicios no-HTTP como bases de datos)
+# =============================================================================
+tcp:
+  routers: {}
+  services: {}
+
+# =============================================================================
+# TLS Configuration
+# =============================================================================
+tls:
+  options:
+    default:
+      minVersion: VersionTLS12
+      cipherSuites:
+        - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+        - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+        - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305
+      sniStrict: false
+  
+  # Certificados (para usar certificados de FreeIPA CA)
+  # stores:
+  #   default:
+  #     defaultCertificate:
+  #       certFile: /etc/traefik/certs/chispitas.crt
+  #       keyFile: /etc/traefik/certs/chispitas.key
+  
+  # certificates:
+  #   - certFile: /etc/traefik/certs/chispitas.crt
+  #     keyFile: /etc/traefik/certs/chispitas.key

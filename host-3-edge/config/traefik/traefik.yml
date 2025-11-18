@@ -1,0 +1,99 @@
+# Configuración Global de Traefik
+# Proyecto: Chispitas - Fábrica de Momentos
+
+# =============================================================================
+# Global Configuration
+# =============================================================================
+global:
+  checkNewVersion: true
+  sendAnonymousUsage: false
+
+# =============================================================================
+# API y Dashboard
+# =============================================================================
+api:
+  dashboard: true
+  insecure: true  # Cambiar a false en producción
+
+# =============================================================================
+# Entry Points
+# =============================================================================
+entryPoints:
+  web:
+    address: ":80"
+    # Redirección automática a HTTPS (descomentar en producción)
+    # http:
+    #   redirections:
+    #     entryPoint:
+    #       to: websecure
+    #       scheme: https
+  
+  websecure:
+    address: ":443"
+    http:
+      tls:
+        # Certificados self-signed por ahora
+        # En producción, usar Let's Encrypt o certificados de FreeIPA CA
+
+# =============================================================================
+# Providers
+# =============================================================================
+providers:
+  # Provider de archivos (para configuración estática de servicios externos)
+  file:
+    directory: "/etc/traefik/dynamic"
+    watch: true
+  
+  # Provider de Docker (deshabilitado, servicios están en otros hosts)
+  docker:
+    exposedByDefault: false
+    endpoint: "unix:///var/run/docker.sock"
+    watch: false
+
+# =============================================================================
+# Certificate Resolvers (para Let's Encrypt en producción)
+# =============================================================================
+certificatesResolvers:
+  default:
+    acme:
+      email: "admin@chispitas.local"
+      storage: "/letsencrypt/acme.json"
+      # Usar HTTP challenge (o TLS challenge)
+      httpChallenge:
+        entryPoint: web
+      # O usar DNS challenge si tiene acceso a DNS
+      # dnsChallenge:
+      #   provider: cloudflare
+
+# =============================================================================
+# Logging
+# =============================================================================
+log:
+  level: INFO  # DEBUG, INFO, WARN, ERROR, FATAL, PANIC
+  format: common  # common, json
+  filePath: "/var/log/traefik/traefik.log"
+
+accessLog:
+  format: common  # common, json
+  filePath: "/var/log/traefik/access.log"
+  filters:
+    statusCodes:
+      - "200"
+      - "300-302"
+      - "400-499"
+      - "500-599"
+
+# =============================================================================
+# Pilot (Telemetry - opcional)
+# =============================================================================
+# pilot:
+#   token: "your-pilot-token"
+
+# =============================================================================
+# Metrics (opcional)
+# =============================================================================
+# metrics:
+#   prometheus:
+#     entryPoint: metrics
+#     addEntryPointsLabels: true
+#     addServicesLabels: true

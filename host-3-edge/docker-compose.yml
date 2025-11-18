@@ -1,0 +1,79 @@
+version: '3.8'
+
+# =============================================================================
+# Host-SVR-03 (Lubuntu - 4GB RAM)
+# Servicios: Proxy Inverso (Traefik), Cliente de Pruebas
+# =============================================================================
+
+networks:
+  chispitas_net:
+    external: true
+
+volumes:
+  traefik_config:
+    driver: local
+  traefik_acme:
+    driver: local
+
+services:
+  # ===========================================================================
+  # Traefik - Reverse Proxy
+  # ===========================================================================
+  traefik:
+    image: traefik:${TRAEFIK_VERSION:-v2.10}
+    container_name: traefik
+    networks:
+      chispitas_net:
+        ipv4_address: 172.20.3.10
+    ports:
+      - "80:80"       # HTTP
+      - "443:443"     # HTTPS
+      - "8080:8080"   # Dashboard
+    environment:
+      - TZ=${TZ:-America/Bogota}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./config/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./config/traefik/dynamic:/etc/traefik/dynamic:ro
+      - traefik_acme:/letsencrypt
+      - traefik_config:/config
+    command:
+      # Global configuration
+      - --global.checkNewVersion=true
+      - --global.sendAnonymousUsage=false
+      
+      # API and Dashboard
+      - --api=true
+      - --api.dashboard=true
+      - --api.insecure=true
+      
+      # Entrypoints
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      
+      # Providers
+      - --providers.docker=false
+      - --providers.file.directory=/etc/traefik/dynamic
+      - --providers.file.watch=true
+      
+      # Logging
+      - --log.level=${LOG_LEVEL:-INFO}
+      - --log.format=common
+      - --accesslog=true
+      - --accesslog.format=common
+      
+      # Certificados (self-signed por ahora)
+      - --certificatesresolvers.default.acme.email=${ODOO_ADMIN_EMAIL:-admin@chispitas.local}
+      - --certificatesresolvers.default.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.default.acme.tlschallenge=true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dashboard.rule=Host(`traefik.chispitas.local`)"
+      - "traefik.http.routers.dashboard.service=api@internal"
+      - "traefik.http.routers.dashboard.entrypoints=web"
