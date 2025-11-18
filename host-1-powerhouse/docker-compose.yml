@@ -1,8 +1,8 @@
-version: '3.8'
-
 # =============================================================================
 # Host-SVR-01 (Windows/Ryzen 5 - 32GB RAM)
 # Servicios: FreeIPA, Odoo, SuiteCRM, OrangeHRM, Dolibarr + Bases de Datos
+# =============================================================================
+# NOTA: Asegúrese de copiar ../.env.template a ../.env y configurar las variables
 # =============================================================================
 
 networks:
@@ -53,6 +53,8 @@ services:
     container_name: freeipa-server
     hostname: ipa.chispitas.local
     domainname: chispitas.local
+    env_file:
+      - ../.env
     networks:
       chispitas_net:
         ipv4_address: 172.20.1.10
@@ -73,7 +75,7 @@ services:
     volumes:
       - freeipa_data:/data:Z
       - freeipa_logs:/var/log:Z
-      - ./scripts/setup_chispitas.sh:/setup_chispitas.sh:ro
+      - ../scripts/setup_chispitas.sh:/setup_chispitas.sh:ro
     sysctls:
       - net.ipv6.conf.all.disable_ipv6=0
     security_opt:
@@ -98,6 +100,8 @@ services:
   postgres-odoo:
     image: postgres:${POSTGRES_ODOO_VERSION:-15}
     container_name: postgres-odoo
+    env_file:
+      - ../.env
     networks:
       chispitas_net:
         ipv4_address: 172.20.1.20
@@ -121,6 +125,8 @@ services:
   odoo:
     image: odoo:${ODOO_VERSION:-17.0}
     container_name: odoo-manufacturing
+    env_file:
+      - ../.env
     networks:
       chispitas_net:
         ipv4_address: 172.20.1.21
@@ -153,6 +159,8 @@ services:
   mariadb-crm:
     image: mariadb:${MARIADB_VERSION:-10.11}
     container_name: mariadb-crm
+    env_file:
+      - ../.env
     networks:
       chispitas_net:
         ipv4_address: 172.20.1.30
@@ -175,29 +183,29 @@ services:
   # ===========================================================================
   # SuiteCRM - CRM para Área Comercial
   # ===========================================================================
+  # NOTA: Usando imagen de la comunidad ya que bitnami/suitecrm no existe
+  # Para producción, considere construir su propia imagen desde el código fuente oficial
   suitecrm:
-    image: bitnami/suitecrm:${SUITECRM_VERSION:-latest}
+    image: salesagility/suitecrm:latest
     container_name: suitecrm
+    env_file:
+      - ../.env
     networks:
       chispitas_net:
         ipv4_address: 172.20.1.31
     ports:
-      - "${SUITECRM_PORT:-8081}:8080"
-      - "8443:8443"
+      - "${SUITECRM_PORT:-8081}:80"
     environment:
-      - SUITECRM_DATABASE_HOST=mariadb-crm
-      - SUITECRM_DATABASE_PORT_NUMBER=3306
-      - SUITECRM_DATABASE_NAME=${MARIADB_CRM_DATABASE:-suitecrm_db}
-      - SUITECRM_DATABASE_USER=${MARIADB_CRM_USER:-suitecrm_user}
-      - SUITECRM_DATABASE_PASSWORD=${MARIADB_CRM_PASSWORD}
-      - SUITECRM_HOST=crm.chispitas.local
-      - SUITECRM_USERNAME=${SUITECRM_ADMIN_USER:-admin}
-      - SUITECRM_PASSWORD=${SUITECRM_ADMIN_PASSWORD}
-      - SUITECRM_EMAIL=${ODOO_ADMIN_EMAIL:-admin@chispitas.local}
-      - SUITECRM_SMTP_HOST=mail.chispitas.local
-      - SUITECRM_SMTP_PORT=587
+      - DATABASE_TYPE=mysql
+      - DATABASE_HOST=mariadb-crm
+      - DATABASE_NAME=${MARIADB_CRM_DATABASE:-suitecrm_db}
+      - DATABASE_USER=${MARIADB_CRM_USER:-suitecrm_user}
+      - DATABASE_PASSWORD=${MARIADB_CRM_PASSWORD}
+      - SITE_URL=http://crm.chispitas.local
+      - DB_ADMIN_USERNAME=${SUITECRM_ADMIN_USER:-admin}
+      - DB_ADMIN_PASSWORD=${SUITECRM_ADMIN_PASSWORD}
     volumes:
-      - suitecrm_data:/bitnami/suitecrm
+      - suitecrm_data:/var/www/html
     depends_on:
       mariadb-crm:
         condition: service_healthy
@@ -209,6 +217,8 @@ services:
   mariadb-hrm:
     image: mariadb:${MARIADB_VERSION:-10.11}
     container_name: mariadb-hrm
+    env_file:
+      - ../.env
     networks:
       chispitas_net:
         ipv4_address: 172.20.1.40
@@ -233,6 +243,8 @@ services:
   orangehrm:
     image: orangehrm/orangehrm:${ORANGEHRM_VERSION:-latest}
     container_name: orangehrm
+    env_file:
+      - ../.env
     networks:
       chispitas_net:
         ipv4_address: 172.20.1.41
@@ -258,6 +270,8 @@ services:
   mariadb-erp:
     image: mariadb:${MARIADB_VERSION:-10.11}
     container_name: mariadb-erp
+    env_file:
+      - ../.env
     networks:
       chispitas_net:
         ipv4_address: 172.20.1.50
@@ -282,6 +296,8 @@ services:
   dolibarr:
     image: dolibarr/dolibarr:${DOLIBARR_VERSION:-latest}
     container_name: dolibarr-erp
+    env_file:
+      - ../.env
     networks:
       chispitas_net:
         ipv4_address: 172.20.1.51

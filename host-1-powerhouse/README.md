@@ -71,11 +71,17 @@ Este host ejecuta los servicios principales de aplicaciones empresariales y el s
 
 4. **Archivo .env configurado:**
    ```powershell
+   # IMPORTANTE: El archivo .env debe estar en el directorio PADRE (raíz del proyecto)
    # Copiar el template desde la raíz del proyecto
-   Copy-Item ..\.env.template .env
+   cd ..
+   Copy-Item .env.template .env
    # Editar .env con las contraseñas deseadas
    notepad .env
+   # Volver al directorio host-1-powerhouse
+   cd host-1-powerhouse
    ```
+   
+   **Nota crítica**: El archivo `.env` debe estar en el directorio padre (`Proyecto-Redes-Corporativas/.env`), NO en `host-1-powerhouse/.env`. El docker-compose.yml está configurado para buscar `../.env`.
 
 ### Despliegue
 

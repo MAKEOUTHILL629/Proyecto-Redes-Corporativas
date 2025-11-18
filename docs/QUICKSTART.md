@@ -24,7 +24,7 @@ Esta guía proporciona los pasos mínimos para tener el sistema funcionando ráp
 git clone <url-repo>
 cd Proyecto-Redes-Corporativas
 
-# Copiar y editar archivo de entorno
+# IMPORTANTE: Copiar y editar archivo de entorno EN EL DIRECTORIO RAÍZ
 cp .env.template .env
 nano .env  # Ajustar IPs y contraseñas
 
@@ -37,7 +37,11 @@ docker network create --driver bridge --subnet=172.20.0.0/16 --gateway=172.20.0.
 - `HOST_SVR_02_IP` (ej: 192.168.1.20)
 - `HOST_SVR_03_IP` (ej: 192.168.1.30)
 - `FREEIPA_ADMIN_PASSWORD` (cambiar!)
-- Todas las contraseñas de bases de datos
+- `MARIADB_ROOT_PASSWORD` (cambiar!)
+- `POSTGRES_ODOO_PASSWORD` (cambiar!)
+- Todas las contraseñas de bases de datos y aplicaciones
+
+**⚠️ IMPORTANTE**: El archivo `.env` debe estar en el directorio raíz del proyecto (`Proyecto-Redes-Corporativas/.env`), NO dentro de los subdirectorios `host-X-xxx/`.
 
 ---
 
