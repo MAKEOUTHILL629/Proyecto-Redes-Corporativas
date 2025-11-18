@@ -1,0 +1,141 @@
+# =============================================================================
+# .gitignore - Proyecto Chispitas
+# =============================================================================
+
+# Archivos de entorno con contraseñas
+.env
+*.env
+!.env.template
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Datos de volúmenes Docker
+**/volumes/
+data/
+
+# Backups
+backups/
+*.sql
+*.tar.gz
+*.zip
+*.bak
+
+# Certificados y claves privadas
+*.pem
+*.key
+*.crt
+*.cert
+*.ca-bundle
+certs/
+ssl/
+
+# Archivos temporales
+*.tmp
+*.temp
+.tmp/
+tmp/
+.cache/
+
+# Archivos del sistema operativo
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# IDEs y editores
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# Docker
+docker-compose.override.yml
+.dockerignore
+
+# Archivos de configuración personal
+config.local.*
+*.local
+local/
+
+# Archivos de Samba
+*.ldb
+*.tdb
+
+# Archivos de FreeIPA
+/host-1-powerhouse/freeipa-data/
+
+# Archivos de bases de datos
+*.db
+*.sqlite
+*.sqlite3
+
+# Documentación generada
+_build/
+site/
+
+# Archivos de test
+test-results/
+coverage/
+.nyc_output/
+
+# Archivos específicos de aplicaciones
+odoo/filestore/
+odoo/sessions/
+suitecrm/upload/
+dolibarr/documents/
+
+# MacOS específico
+.AppleDouble
+.LSOverride
+
+# Windows específico
+*.lnk
+
+# Linux específico
+.directory
+
+# Archivos de configuración de red temporal
+hosts.backup
+resolv.conf.backup
+
+# Scripts de instalación personalizados (mantener solo templates)
+install-*.sh
+!install-template.sh
+
+# Notas personales
+NOTES.md
+TODO.md
+notes/

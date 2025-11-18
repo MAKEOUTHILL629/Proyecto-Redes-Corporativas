@@ -1,0 +1,177 @@
+version: '3.8'
+
+# =============================================================================
+# Host-SVR-02 (MacOS/M4)
+# Servicios: Servidor de Correo (Postfix/Dovecot), Servidor de Archivos (Samba)
+# =============================================================================
+
+networks:
+  chispitas_net:
+    external: true
+
+volumes:
+  # Mail Server volumes
+  mailserver_data:
+    driver: local
+  mailserver_state:
+    driver: local
+  mailserver_logs:
+    driver: local
+  mailserver_config:
+    driver: local
+  
+  # Samba volumes
+  samba_data:
+    driver: local
+  samba_config:
+    driver: local
+  # Shared folders
+  samba_produccion:
+    driver: local
+  samba_comercial:
+    driver: local
+  samba_rrhh:
+    driver: local
+  samba_gerencia:
+    driver: local
+  samba_compartido:
+    driver: local
+
+services:
+  # ===========================================================================
+  # Mail Server - docker-mailserver (Postfix + Dovecot)
+  # ===========================================================================
+  mailserver:
+    image: ghcr.io/docker-mailserver/docker-mailserver:latest
+    container_name: mailserver
+    hostname: mail.chispitas.local
+    domainname: chispitas.local
+    networks:
+      chispitas_net:
+        ipv4_address: 172.20.2.10
+    ports:
+      # SMTP
+      - "25:25"       # SMTP
+      - "587:587"     # SMTP Submission
+      - "465:465"     # SMTP Implicit TLS
+      # IMAP
+      - "143:143"     # IMAP
+      - "993:993"     # IMAPS
+      # POP3
+      - "110:110"     # POP3
+      - "995:995"     # POP3S
+      # Management
+      - "4190:4190"   # ManageSieve
+    environment:
+      # General settings
+      - ENABLE_SPAMASSASSIN=0
+      - ENABLE_CLAMAV=0
+      - ENABLE_FAIL2BAN=0
+      - ENABLE_POSTGREY=0
+      - ONE_DIR=1
+      - DMS_DEBUG=0
+      
+      # SSL/TLS settings
+      - SSL_TYPE=self-signed
+      
+      # LDAP/FreeIPA Integration
+      - ACCOUNT_PROVISIONER=LDAP
+      - LDAP_SERVER_HOST=192.168.1.10
+      - LDAP_SEARCH_BASE=cn=accounts,dc=chispitas,dc=local
+      - LDAP_BIND_DN=uid=admin,cn=users,cn=accounts,dc=chispitas,dc=local
+      - LDAP_BIND_PW=${FREEIPA_ADMIN_PASSWORD}
+      - LDAP_QUERY_FILTER_USER=(&(objectClass=posixAccount)(uid=%u))
+      - LDAP_QUERY_FILTER_GROUP=(&(objectClass=posixGroup)(memberUid=%u))
+      - LDAP_QUERY_FILTER_ALIAS=(&(objectClass=inetLocalMailRecipient)(mailLocalAddress=%s))
+      
+      # Domain settings
+      - OVERRIDE_HOSTNAME=mail.chispitas.local
+      - POSTMASTER_ADDRESS=postmaster@chispitas.local
+      
+      # Dovecot settings
+      - DOVECOT_MAILBOX_FORMAT=maildir
+      - DOVECOT_USER_FILTER=(&(objectClass=posixAccount)(uid=%u))
+      - DOVECOT_PASS_FILTER=(&(objectClass=posixAccount)(uid=%u))
+      
+      # Postfix settings
+      - POSTFIX_MESSAGE_SIZE_LIMIT=52428800
+      - PERMIT_DOCKER=network
+      - ENABLE_SRS=0
+      
+      # Additional settings
+      - TZ=${TZ:-America/Bogota}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    volumes:
+      - mailserver_data:/var/mail
+      - mailserver_state:/var/mail-state
+      - mailserver_logs:/var/log/mail
+      - mailserver_config:/tmp/docker-mailserver
+      - ./config/mailserver/postfix-main.cf:/tmp/docker-mailserver/postfix-main.cf:ro
+      - ./config/mailserver/postfix-master.cf:/tmp/docker-mailserver/postfix-master.cf:ro
+      - ./config/mailserver/dovecot.cf:/tmp/docker-mailserver/dovecot.cf:ro
+      - /etc/localtime:/etc/localtime:ro
+    cap_add:
+      - NET_ADMIN
+      - SYS_PTRACE
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "ss", "-lntp", "|", "grep", "-E", ":25|:587|:143|:993"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ===========================================================================
+  # Samba File Server
+  # ===========================================================================
+  samba:
+    image: dperson/samba:latest
+    container_name: samba-server
+    hostname: files.chispitas.local
+    networks:
+      chispitas_net:
+        ipv4_address: 172.20.2.20
+    ports:
+      - "139:139"     # NetBIOS Session Service
+      - "445:445"     # SMB over TCP
+    environment:
+      - TZ=${TZ:-America/Bogota}
+      - WORKGROUP=${SAMBA_WORKGROUP:-CHISPITAS}
+      - RECYCLE=false
+      - PERMISSIONS=false
+      - USERID=1000
+      - GROUPID=1000
+    volumes:
+      - ./config/samba/smb.conf:/etc/samba/smb.conf:ro
+      - samba_produccion:/shares/Produccion
+      - samba_comercial:/shares/Comercial
+      - samba_rrhh:/shares/RRHH
+      - samba_gerencia:/shares/Gerencia
+      - samba_compartido:/shares/Compartido
+      - samba_config:/etc/samba
+      - samba_data:/var/lib/samba
+    tmpfs:
+      - /tmp
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "smbclient", "-L", "localhost", "-N"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===========================================================================
+  # Samba Configuration Helper (ejecutar una sola vez)
+  # ===========================================================================
+  # Este servicio ayuda a configurar Samba para unirse al dominio FreeIPA
+  # Comentar después de la configuración inicial
+  # samba-setup:
+  #   image: dperson/samba:latest
+  #   container_name: samba-setup
+  #   networks:
+  #     chispitas_net:
+  #   volumes:
+  #     - samba_config:/etc/samba
+  #     - ./scripts/samba-join-domain.sh:/setup.sh:ro
+  #   command: /bin/bash /setup.sh
+  #   depends_on:
+  #     - samba

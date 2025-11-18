@@ -1,0 +1,305 @@
+version: '3.8'
+
+# =============================================================================
+# Host-SVR-01 (Windows/Ryzen 5 - 32GB RAM)
+# Servicios: FreeIPA, Odoo, SuiteCRM, OrangeHRM, Dolibarr + Bases de Datos
+# =============================================================================
+
+networks:
+  chispitas_net:
+    external: true
+
+volumes:
+  # FreeIPA volumes
+  freeipa_data:
+    driver: local
+  freeipa_logs:
+    driver: local
+  
+  # Odoo volumes
+  odoo_data:
+    driver: local
+  odoo_addons:
+    driver: local
+  postgres_odoo_data:
+    driver: local
+  
+  # SuiteCRM volumes
+  suitecrm_data:
+    driver: local
+  mariadb_crm_data:
+    driver: local
+  
+  # OrangeHRM volumes
+  orangehrm_data:
+    driver: local
+  mariadb_hrm_data:
+    driver: local
+  
+  # Dolibarr volumes
+  dolibarr_data:
+    driver: local
+  dolibarr_documents:
+    driver: local
+  mariadb_erp_data:
+    driver: local
+
+services:
+  # ===========================================================================
+  # FreeIPA Server (Principal) - Directorio LDAP, DNS, Kerberos, CA
+  # ===========================================================================
+  freeipa-server:
+    image: freeipa/freeipa-server:rocky-9
+    container_name: freeipa-server
+    hostname: ipa.chispitas.local
+    domainname: chispitas.local
+    networks:
+      chispitas_net:
+        ipv4_address: 172.20.1.10
+    ports:
+      - "80:80"       # HTTP
+      - "443:443"     # HTTPS
+      - "389:389"     # LDAP
+      - "636:636"     # LDAPS
+      - "88:88"       # Kerberos
+      - "464:464"     # Kerberos Password
+      - "53:53/tcp"   # DNS TCP
+      - "53:53/udp"   # DNS UDP
+      - "88:88/udp"   # Kerberos UDP
+      - "464:464/udp" # Kerberos Password UDP
+    environment:
+      - IPA_SERVER_HOSTNAME=ipa.chispitas.local
+      - IPA_SERVER_INSTALL_OPTS=-U --domain=chispitas.local --realm=CHISPITAS.LOCAL --ds-password=${FREEIPA_DM_PASSWORD} --admin-password=${FREEIPA_ADMIN_PASSWORD} --no-ntp --setup-dns --no-forwarders --no-reverse
+    volumes:
+      - freeipa_data:/data:Z
+      - freeipa_logs:/var/log:Z
+      - ./scripts/setup_chispitas.sh:/setup_chispitas.sh:ro
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=0
+    security_opt:
+      - seccomp:unconfined
+    cap_add:
+      - SYS_TIME
+      - NET_ADMIN
+    tmpfs:
+      - /run
+      - /tmp
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "ipactl", "status"]
+      interval: 60s
+      timeout: 30s
+      retries: 5
+      start_period: 300s
+
+  # ===========================================================================
+  # PostgreSQL - Base de Datos para Odoo
+  # ===========================================================================
+  postgres-odoo:
+    image: postgres:${POSTGRES_ODOO_VERSION:-15}
+    container_name: postgres-odoo
+    networks:
+      chispitas_net:
+        ipv4_address: 172.20.1.20
+    environment:
+      - POSTGRES_DB=${POSTGRES_ODOO_DB:-odoo_db}
+      - POSTGRES_USER=${POSTGRES_ODOO_USER:-odoo_user}
+      - POSTGRES_PASSWORD=${POSTGRES_ODOO_PASSWORD}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_odoo_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_ODOO_USER:-odoo_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===========================================================================
+  # Odoo - ERP Manufacturing (Área de Producción)
+  # ===========================================================================
+  odoo:
+    image: odoo:${ODOO_VERSION:-17.0}
+    container_name: odoo-manufacturing
+    networks:
+      chispitas_net:
+        ipv4_address: 172.20.1.21
+    ports:
+      - "${ODOO_PORT:-8069}:8069"
+    environment:
+      - HOST=postgres-odoo
+      - PORT=5432
+      - USER=${POSTGRES_ODOO_USER:-odoo_user}
+      - PASSWORD=${POSTGRES_ODOO_PASSWORD}
+      - DB_NAME=${POSTGRES_ODOO_DB:-odoo_db}
+    volumes:
+      - odoo_data:/var/lib/odoo
+      - odoo_addons:/mnt/extra-addons
+      - ./config/odoo/odoo.conf:/etc/odoo/odoo.conf:ro
+    depends_on:
+      postgres-odoo:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8069/web/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ===========================================================================
+  # MariaDB - Base de Datos para SuiteCRM
+  # ===========================================================================
+  mariadb-crm:
+    image: mariadb:${MARIADB_VERSION:-10.11}
+    container_name: mariadb-crm
+    networks:
+      chispitas_net:
+        ipv4_address: 172.20.1.30
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${MARIADB_CRM_DATABASE:-suitecrm_db}
+      - MYSQL_USER=${MARIADB_CRM_USER:-suitecrm_user}
+      - MYSQL_PASSWORD=${MARIADB_CRM_PASSWORD}
+    volumes:
+      - mariadb_crm_data:/var/lib/mysql
+      - ./config/mariadb/crm-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --max_allowed_packet=256M
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MARIADB_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===========================================================================
+  # SuiteCRM - CRM para Área Comercial
+  # ===========================================================================
+  suitecrm:
+    image: bitnami/suitecrm:${SUITECRM_VERSION:-latest}
+    container_name: suitecrm
+    networks:
+      chispitas_net:
+        ipv4_address: 172.20.1.31
+    ports:
+      - "${SUITECRM_PORT:-8081}:8080"
+      - "8443:8443"
+    environment:
+      - SUITECRM_DATABASE_HOST=mariadb-crm
+      - SUITECRM_DATABASE_PORT_NUMBER=3306
+      - SUITECRM_DATABASE_NAME=${MARIADB_CRM_DATABASE:-suitecrm_db}
+      - SUITECRM_DATABASE_USER=${MARIADB_CRM_USER:-suitecrm_user}
+      - SUITECRM_DATABASE_PASSWORD=${MARIADB_CRM_PASSWORD}
+      - SUITECRM_HOST=crm.chispitas.local
+      - SUITECRM_USERNAME=${SUITECRM_ADMIN_USER:-admin}
+      - SUITECRM_PASSWORD=${SUITECRM_ADMIN_PASSWORD}
+      - SUITECRM_EMAIL=${ODOO_ADMIN_EMAIL:-admin@chispitas.local}
+      - SUITECRM_SMTP_HOST=mail.chispitas.local
+      - SUITECRM_SMTP_PORT=587
+    volumes:
+      - suitecrm_data:/bitnami/suitecrm
+    depends_on:
+      mariadb-crm:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ===========================================================================
+  # MariaDB - Base de Datos para OrangeHRM
+  # ===========================================================================
+  mariadb-hrm:
+    image: mariadb:${MARIADB_VERSION:-10.11}
+    container_name: mariadb-hrm
+    networks:
+      chispitas_net:
+        ipv4_address: 172.20.1.40
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${MARIADB_HRM_DATABASE:-orangehrm_db}
+      - MYSQL_USER=${MARIADB_HRM_USER:-orangehrm_user}
+      - MYSQL_PASSWORD=${MARIADB_HRM_PASSWORD}
+    volumes:
+      - mariadb_hrm_data:/var/lib/mysql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MARIADB_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===========================================================================
+  # OrangeHRM - Sistema de Recursos Humanos
+  # ===========================================================================
+  orangehrm:
+    image: orangehrm/orangehrm:${ORANGEHRM_VERSION:-latest}
+    container_name: orangehrm
+    networks:
+      chispitas_net:
+        ipv4_address: 172.20.1.41
+    ports:
+      - "${ORANGEHRM_PORT:-8082}:80"
+      - "8444:443"
+    environment:
+      - ORANGEHRM_DATABASE_HOST=mariadb-hrm
+      - ORANGEHRM_DATABASE_PORT=3306
+      - ORANGEHRM_DATABASE_NAME=${MARIADB_HRM_DATABASE:-orangehrm_db}
+      - ORANGEHRM_DATABASE_USER=${MARIADB_HRM_USER:-orangehrm_user}
+      - ORANGEHRM_DATABASE_PASSWORD=${MARIADB_HRM_PASSWORD}
+    volumes:
+      - orangehrm_data:/var/www/html
+    depends_on:
+      mariadb-hrm:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ===========================================================================
+  # MariaDB - Base de Datos para Dolibarr
+  # ===========================================================================
+  mariadb-erp:
+    image: mariadb:${MARIADB_VERSION:-10.11}
+    container_name: mariadb-erp
+    networks:
+      chispitas_net:
+        ipv4_address: 172.20.1.50
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${MARIADB_ERP_DATABASE:-dolibarr_db}
+      - MYSQL_USER=${MARIADB_ERP_USER:-dolibarr_user}
+      - MYSQL_PASSWORD=${MARIADB_ERP_PASSWORD}
+    volumes:
+      - mariadb_erp_data:/var/lib/mysql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MARIADB_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===========================================================================
+  # Dolibarr - ERP para Área Administrativa/Financiera
+  # ===========================================================================
+  dolibarr:
+    image: dolibarr/dolibarr:${DOLIBARR_VERSION:-latest}
+    container_name: dolibarr-erp
+    networks:
+      chispitas_net:
+        ipv4_address: 172.20.1.51
+    ports:
+      - "${DOLIBARR_PORT:-8083}:80"
+    environment:
+      - DOLI_DB_HOST=mariadb-erp
+      - DOLI_DB_PORT=3306
+      - DOLI_DB_NAME=${MARIADB_ERP_DATABASE:-dolibarr_db}
+      - DOLI_DB_USER=${MARIADB_ERP_USER:-dolibarr_user}
+      - DOLI_DB_PASSWORD=${MARIADB_ERP_PASSWORD}
+      - DOLI_ADMIN_LOGIN=${DOLIBARR_ADMIN_USER:-admin}
+      - DOLI_ADMIN_PASSWORD=${DOLIBARR_ADMIN_PASSWORD}
+      - DOLI_URL_ROOT=http://erp.chispitas.local
+    volumes:
+      - dolibarr_data:/var/www/html
+      - dolibarr_documents:/var/www/documents
+    depends_on:
+      mariadb-erp:
+        condition: service_healthy
+    restart: unless-stopped
